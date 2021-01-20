@@ -15,7 +15,7 @@ import (
 
 func resourceElasticsearchOpenDistroISMPolicyMapping() *schema.Resource {
 	return &schema.Resource{
-		Description: "Provides an Elasticsearch Open Distro ISM policy. Please refer to the Open Distro [ISM documentation][https://opendistro.github.io/for-elasticsearch-docs/docs/ism/] for details.",
+		Description: "Provides an Elasticsearch Open Distro ISM policy. Please refer to the Open Distro [ISM documentation](https://opendistro.github.io/for-elasticsearch-docs/docs/ism/) for details.",
 		Create:      resourceElasticsearchOpenDistroISMPolicyMappingCreate,
 		Read:        resourceElasticsearchOpenDistroISMPolicyMappingRead,
 		Update:      resourceElasticsearchOpenDistroISMPolicyMappingUpdate,
@@ -71,7 +71,8 @@ func resourceElasticsearchOpenDistroISMPolicyMappingCreate(d *schema.ResourceDat
 }
 
 func resourceElasticsearchOpenDistroISMPolicyMappingRead(d *schema.ResourceData, m interface{}) error {
-	indexesList, err := resourceElasticsearchGetOpendistroPolicyMapping(d, m)
+	indexPattern := d.Get("indexes").(string)
+	indexesList, err := resourceElasticsearchGetOpendistroPolicyMapping(indexPattern, m)
 	concernIndexes := []string{}
 	policyName := d.Get("policy_id").(string)
 
@@ -86,7 +87,7 @@ func resourceElasticsearchOpenDistroISMPolicyMappingRead(d *schema.ResourceData,
 		}
 	}
 
-	log.Printf("[INFO] %+v", concernIndexes)
+	log.Printf("[INFO] resourceElasticsearchOpenDistroISMPolicyMappingRead %+v %+v %+v", indexPattern, indexesList, concernIndexes)
 
 	if len(concernIndexes) == 0 {
 		d.SetId("")
@@ -99,7 +100,7 @@ func resourceElasticsearchOpenDistroISMPolicyMappingRead(d *schema.ResourceData,
 }
 
 func resourceElasticsearchOpenDistroISMPolicyMappingUpdate(d *schema.ResourceData, m interface{}) error {
-	if _, err := resourceElasticsearchPostOpendistroPolicyMapping(d, m, "update_policy"); err != nil {
+	if _, err := resourceElasticsearchPostOpendistroPolicyMapping(d, m, "change_policy"); err != nil {
 		if elastic7.IsNotFound(err) {
 			log.Printf("[WARN] OpendistroPolicyMapping (%s) not found, removing from state", d.Id())
 			d.SetId("")
@@ -194,11 +195,10 @@ func resourceElasticsearchPostOpendistroPolicyMapping(d *schema.ResourceData, m 
 	return response, nil
 }
 
-func resourceElasticsearchGetOpendistroPolicyMapping(d *schema.ResourceData, m interface{}) (map[string]interface{}, error) {
-
+func resourceElasticsearchGetOpendistroPolicyMapping(indexPattern string, m interface{}) (map[string]interface{}, error) {
 	response := new(map[string]interface{})
-	path, err := uritemplates.Expand("/_opendistro/_ism/explain/{indexes}", map[string]string{
-		"indexes": d.Get("indexes").(string),
+	path, err := uritemplates.Expand("/_opendistro/_ism/explain/{index_pattern}", map[string]string{
+		"index_pattern": indexPattern,
 	})
 	if err != nil {
 		return *response, fmt.Errorf("error building URL path for policy mapping: %+v", err)
@@ -232,7 +232,7 @@ func resourceElasticsearchGetOpendistroPolicyMapping(d *schema.ResourceData, m i
 		return *response, fmt.Errorf("error unmarshalling policy explain body: %+v: %+v", err, body)
 	}
 
-	log.Printf("[INFO] %+v", response)
+	log.Printf("[INFO] resourceElasticsearchGetOpendistroPolicyMapping %+v", response)
 
 	return *response, nil
 }
