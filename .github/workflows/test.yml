@@ -36,9 +36,12 @@ jobs:
         - es-major-version: "6"
           es-version: 6.8.9
           ES_OPENDISTRO_IMAGE: "amazon/opendistro-for-elasticsearch:0.9.0"
+          ES_KIBANA_IMAGE: "docker.elastic.co/kibana/kibana-oss:6.0.0"
         - es-major-version: "7"
           es-version: 7.9.3
           ES_OPENDISTRO_IMAGE: "amazon/opendistro-for-elasticsearch:1.10.1"
+          # ES_KIBANA_IMAGE: "docker.elastic.co/kibana/kibana-oss:7.10.2"
+          ES_KIBANA_IMAGE: "docker.elastic.co/kibana/kibana:7.11.2"
     needs: [lint]
     name: Test against ES ${{ matrix.es-major-version }} on ${{ matrix.go-version }}/${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -87,6 +90,12 @@ jobs:
       # ensure that ES has come up and is available
       run: |
         ./script/wait-for-endpoint --timeout=120 http://localhost:9200
+    - name: Wait for Kibana
+      # ensure that Kibana API has come up and is available
+      run: |
+        if [ -n "$ES_KIBANA_IMAGE" ]; then
+          ./script/wait-for-endpoint --timeout=120 http://localhost:5601/api/alerts/_health
+        fi
     - name: Warm up OpenDistro
       # OpenDistro lazily initializes its indexes, see
       # https://github.com/opendistro-for-elasticsearch/alerting/issues/60
